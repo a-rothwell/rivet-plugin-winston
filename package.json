@@ -1,7 +1,9 @@
 {
   "name": "rivet-plugin-example",
   "packageManager": "yarn@3.5.0",
+  "version": "0.0.1",
   "type": "module",
+  "main": "dist/bundle.js",
   "scripts": {
     "build": "tsc -b && tsx bundle.ts",
     "dev": "run-p watch serve",
