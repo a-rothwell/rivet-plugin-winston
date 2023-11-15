@@ -12,9 +12,7 @@ This project is an example of a [Rivet](https://github.com/Ironclad/rivet) plugi
   - [1. Plugin Definition](#1-plugin-definition)
   - [2. Node Definitions](#2-node-definitions)
   - [3. Bundling](#3-bundling)
-  - [4. Committing](#4-committing)
-  - [5. Serving your plugin](#5-serving-your-plugin)
-  - [Loading your plugin using the SDK](#loading-your-plugin-using-the-sdk)
+  - [4. NPM](#4-npm)
 - [Local Development](#local-development)
 
 ## Using the plugin
@@ -23,17 +21,24 @@ This project is an example of a [Rivet](https://github.com/Ironclad/rivet) plugi
 
 To use this plugin in Rivet:
 
-1. Navigate to the Project tab in the left sidebar. You will see a + button next to `Plugins`,
-   click it to open the Add Plugin modal.
-2. In Add Remote Plugin, use this plugin's: [jsdelivr](https://www.jsdelivr.com/) URL:
-
-   ```
-   https://cdn.jsdelivr.net/gh/abrenneke/rivet-plugin-example@main/dist/bundle.js
-   ```
-
-3. The example plugin is now installed in your project. You can add the Example Plugin Node using the Add Node menu.
+1. Open the plugins overlay at the top of the screen.
+2. Search for "rivet-plugin-example"
+3. Click the "Install" button to install the plugin into your current project.
 
 ### In Code
+
+Load your plugin and Rivet into your application:
+
+```ts
+import * as Rivet from "@ironclad/rivet-core";
+import examplePlugin from "rivet-plugin-example";
+```
+
+Register your plugin with Rivet be using the `globalRivetNodeRegistry` or creating a new `NodeRegistration` and registering with that:
+
+```ts
+Rivet.globalRivetNodeRegistry.registerPlugin(examplePlugin(Rivet));
+```
 
 ## Making your own plugin
 
@@ -63,55 +68,11 @@ See [bundle.ts](bundle.ts) for an example of how to bundle your plugin. You can 
 
 It is important that all external libraries are bundled, because browsers cannot load bare imports.
 
-### 4. Committing
+### 4. NPM
 
-You should commit your bundled files to your repository, or provide your plugin on NPM.
-
-### 5. Serving your plugin
-
-You should use a CDN to serve your plugin. You can use [jsdelivr](https://www.jsdelivr.com/) to serve your plugin. You can use the following URL to serve your plugin (assuming you have bundled to `dist/bundle.js`):
-
-```
-https://cdn.jsdelivr.net/gh/<your-github-username>/<your-repo-name>@<your-branch-name>/dist/bundle.js
-```
-
-If you have published your plugin on NPM, you can use the following URL:
-
-```
-https://cdn.jsdelivr.net/npm/<your-package-name>/dist/bundle.js
-```
-
-### Loading your plugin using the SDK
-
-First make sure your plugin is available on NPM or another method so it can be `import`ed.
-
-Load your plugin and Rivet into your application:
-
-```ts
-import * as Rivet from "@ironclad/rivet-core";
-import yourPlugin from "<your-package-name>";
-```
-
-Register your plugin with Rivet be using the `globalRivetNodeRegistry` or creating a new `NodeRegistration` and registering with that:
-
-```ts
-Rivet.globalRivetNodeRegistry.registerPlugin(yourPlugin(Rivet));
-```
+You must finally publish your plugin to NPM so that Rivet users can install it using the UI in Rivet, or using the SDK.
 
 ## Local Development
 
-For local development using this example, run `yarn dev` - this will:
-
-- Watch your TypeScript files with `tsc` and report any type errors
-- Watch your TypeScript files with `esbuild` and bundle them into `dist/bundle.js`
-- Serve the `dist` folder using `serve` on port 3000.
-
-You can then add your plugin to Rivet using the following URL:
-
-```
-http://localhost:3000/bundle.js
-```
-
-To refresh your changes in Rivet, reload the page by right clicking on any of the tabs at the top and selecting "Reload".
-
-![Reload in Rivet](./reload-in-rivet-example.png)
+1. Run `yarn dev` to start the compiler and bundler in watch mode. This will automatically recombine and rebundle your changes into the `dist` folder. This will also copy the bundled files into the plugin install directory.
+2. After each change, you must restart Rivet to see the changes.
