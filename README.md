@@ -2,7 +2,7 @@
 
 # Rivet Winston Plugin
 
-This plugin add one node to improve logging in rivet. Currently this plugin only works in the node runtime. Currently the only supported logging transport is the file transport. If you would like to add more transport options please open a PR.
+This plugin adds one node to improve logging in rivet. Currently this plugin only works in the node runtime. Currently the only supported logging transport is the file transport. If you would like to add more transport options please open a PR.
 
 ## Local Development
 
