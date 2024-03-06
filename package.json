@@ -1,7 +1,7 @@
 {
-  "name": "rivet-plugin-example",
+  "name": "rivet-plugin-winston",
   "packageManager": "yarn@3.5.0",
-  "version": "0.0.3",
+  "version": "0.0.1",
   "type": "module",
   "main": "dist/bundle.js",
   "files": [
@@ -16,7 +16,8 @@
     "publish": "yarn npm publish --access public"
   },
   "dependencies": {
-    "@ironclad/rivet-core": "^1.4.0"
+    "@ironclad/rivet-core": "^1.15.0",
+    "winston": "^3.12.0"
   },
   "devDependencies": {
     "esbuild": "^0.19.2",
@@ -27,6 +28,10 @@
   },
   "volta": {
     "node": "20.6.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/a-rothwell/rivet-plugin-winston.git"
   },
   "rivet": {
     "skipInstall": true

@@ -1,6 +1,6 @@
-// src/nodes/ExamplePluginNode.ts
-function examplePluginNode(rivet) {
-  const ExamplePluginNodeImpl = {
+// src/nodes/WinstonNode.ts
+function WinstonPluginNode(rivet) {
+  const WinstonPluginNodeImpl = {
     // This should create a new instance of your node type from scratch.
     create() {
       const node = {
@@ -8,12 +8,12 @@ function examplePluginNode(rivet) {
         id: rivet.newId(),
         // This is the default data that your node will store
         data: {
-          someData: "Hello World"
+          logLevel: "info"
         },
         // This is the default title of your node.
-        title: "Example Plugin Node",
+        title: "Winston Plugin Node",
         // This must match the type of your node.
-        type: "examplePlugin",
+        type: "WinstonPlugin",
         // X and Y should be set to 0. Width should be set to a reasonable number so there is no overflow.
         visualData: {
           x: 0,
@@ -27,43 +27,55 @@ function examplePluginNode(rivet) {
     // connection, nodes, and project are for advanced use-cases and can usually be ignored.
     getInputDefinitions(data, _connections, _nodes, _project) {
       const inputs = [];
-      if (data.useSomeDataInput) {
+      if (data.useLogLevelInput) {
         inputs.push({
-          id: "someData",
+          id: "logLevel",
           dataType: "string",
-          title: "Some Data"
+          title: "Log Level"
         });
       }
+      inputs.push({
+        id: "logMessage",
+        dataType: "string",
+        title: "Log Message"
+      });
+      inputs.push({
+        id: "logMetaData",
+        dataType: "object",
+        title: "Log Data"
+      });
       return inputs;
     },
     // This function should return all output ports for your node, given its data, connections, all other nodes, and the project. The
     // connection, nodes, and project are for advanced use-cases and can usually be ignored.
     getOutputDefinitions(_data, _connections, _nodes, _project) {
-      return [
-        {
-          id: "someData",
-          dataType: "string",
-          title: "Some Data"
-        }
-      ];
+      return [];
     },
     // This returns UI information for your node, such as how it appears in the context menu.
     getUIData() {
       return {
-        contextMenuTitle: "Example Plugin",
-        group: "Example",
-        infoBoxBody: "This is an example plugin node.",
-        infoBoxTitle: "Example Plugin Node"
+        contextMenuTitle: "Winston Logger",
+        group: "Logging",
+        infoBoxBody: "This is a plugin node that logs with Winston",
+        infoBoxTitle: "Winston Node"
       };
     },
     // This function defines all editors that appear when you edit your node.
     getEditors(_data) {
       return [
         {
-          type: "string",
-          dataKey: "someData",
-          useInputToggleDataKey: "useSomeDataInput",
-          label: "Some Data"
+          type: "dropdown",
+          dataKey: "logLevel",
+          useInputToggleDataKey: "useLogLevelInput",
+          label: "Log Level",
+          options: [
+            { label: "Error", value: "error" },
+            { label: "Warn", value: "warn" },
+            { label: "Info", value: "info" },
+            { label: "Verbose", value: "verbose" },
+            { label: "Debug", value: "debug" },
+            { label: "Silly", value: "silly" }
+          ]
         }
       ];
     },
@@ -71,66 +83,71 @@ function examplePluginNode(rivet) {
     // what the current data of the node is in some way that is useful at a glance.
     getBody(data) {
       return rivet.dedent`
-        Example Plugin Node
-        Data: ${data.useSomeDataInput ? "(Using Input)" : data.someData}
+        Log Level: ${data.useLogLevelInput ? "(Using Input)" : data.logLevel}
       `;
     },
     // This is the main processing function for your node. It can do whatever you like, but it must return
     // a valid Outputs object, which is a map of port IDs to DataValue objects. The return value of this function
     // must also correspond to the output definitions you defined in the getOutputDefinitions function.
-    async process(data, inputData, _context) {
-      const someData = rivet.getInputOrData(
-        data,
-        inputData,
-        "someData",
-        "string"
-      );
-      return {
-        ["someData"]: {
-          type: "string",
-          value: someData
-        }
-      };
+    async process(data, inputData, context) {
+      const { winston } = await import("../dist/nodeEntry.cjs");
+      const fileTransport = context.settings.pluginSettings?.winstonRivetPlugin?.fileTransport ?? "winston.log";
+      const logLevel = data.logLevel;
+      const logMessage = inputData["logMessage"]?.value;
+      const logMetaData = inputData["logMetaData"]?.value;
+      const logger = winston.createLogger({
+        level: logLevel,
+        exitOnError: false,
+        format: winston.format.json(),
+        transports: [
+          new winston.transports.File({ filename: fileTransport })
+        ]
+      });
+      logger.log({
+        level: logLevel,
+        message: logMessage,
+        meta: logMetaData
+      });
+      return {};
     }
   };
-  const examplePluginNode2 = rivet.pluginNodeDefinition(
-    ExamplePluginNodeImpl,
-    "Example Plugin Node"
+  const WinstonPluginNode2 = rivet.pluginNodeDefinition(
+    WinstonPluginNodeImpl,
+    "Winston Logger"
   );
-  return examplePluginNode2;
+  return WinstonPluginNode2;
 }
 
 // src/index.ts
 var plugin = (rivet) => {
-  const exampleNode = examplePluginNode(rivet);
-  const examplePlugin = {
+  const winstonNode = WinstonPluginNode(rivet);
+  const winstonPlugin = {
     // The ID of your plugin should be unique across all plugins.
-    id: "example-plugin",
+    id: "winstonRivetPlugin",
     // The name of the plugin is what is displayed in the Rivet UI.
-    name: "Example Plugin",
+    name: "Winston",
     // Define all configuration settings in the configSpec object.
     configSpec: {
-      exampleSetting: {
+      fileTransport: {
         type: "string",
-        label: "Example Setting",
-        description: "This is an example setting for the example plugin.",
-        helperText: "This is an example setting for the example plugin."
+        label: "File Path to Log File",
+        description: "File Path to Log File"
       }
     },
     // Define any additional context menu groups your plugin adds here.
     contextMenuGroups: [
       {
-        id: "example",
-        label: "Example"
+        id: "logging",
+        label: "Logging"
       }
     ],
     // Register any additional nodes your plugin adds here. This is passed a `register`
     // function, which you can use to register your nodes.
     register: (register) => {
-      register(exampleNode);
+      register(winstonNode);
     }
   };
-  return examplePlugin;
+  return winstonPlugin;
 };
 var src_default = plugin;
 export {

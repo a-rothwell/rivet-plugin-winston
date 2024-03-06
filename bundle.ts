@@ -29,6 +29,12 @@ function getAppDataLocalPath() {
 const syncPlugin: esbuild.Plugin = {
   name: "onBuild",
   setup(build) {
+    build.onResolve({ filter: /\/nodeEntry$/ }, (args) => {
+      return {
+        external: true,
+        path: "../dist/nodeEntry.cjs",
+      };
+    });
     build.onEnd(async () => {
       const packageJson = JSON.parse(
         await readFile(join(__dirname, "package.json"), "utf-8")
@@ -69,27 +75,53 @@ const syncPlugin: esbuild.Plugin = {
   },
 };
 
-const options = {
+const rewriteNodeEntryPlugin: esbuild.Plugin = {
+  name: "rewrite-node-entry",
+  setup(build) {
+    build.onResolve({ filter: /\/nodeEntry$/ }, (args) => {
+      return {
+        external: true,
+        path: "../dist/nodeEntry.cjs",
+      };
+    });
+  },
+};
+
+const isomorphicBundleOptions = {
   entryPoints: ["src/index.ts"],
   bundle: true,
   platform: "neutral",
   target: "es2020",
   outfile: "dist/bundle.js",
   format: "esm",
-  logLevel: "info",
+  external: ["./src/nodeEntry"],
+  plugins: [rewriteNodeEntryPlugin],
+} satisfies esbuild.BuildOptions;
+
+const nodeBundleOptions = {
+  entryPoints: ["src/nodeEntry.ts"],
+  bundle: true,
+  platform: "node",
+  target: "es2020",
+  outfile: "dist/nodeEntry.cjs",
+  format: "cjs",
   plugins: [] as esbuild.Plugin[],
 } satisfies esbuild.BuildOptions;
 
 if (process.argv.includes("--sync")) {
-  options.plugins.push(syncPlugin);
+  isomorphicBundleOptions.plugins.push(syncPlugin);
+  nodeBundleOptions.plugins.push(syncPlugin);
 }
 
 if (process.argv.includes("--watch")) {
-  const context = await esbuild.context(options);
+  const isoContext = await esbuild.context(isomorphicBundleOptions);
+  await isoContext.watch();
 
-  await context.watch();
+  const nodeContext = await esbuild.context(nodeBundleOptions);
+  await nodeContext.watch();
 
   console.log("Watching for changes...");
 } else {
-  await esbuild.build(options);
+  await esbuild.build(isomorphicBundleOptions);
+  await esbuild.build(nodeBundleOptions);
 }

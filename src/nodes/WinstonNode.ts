@@ -21,41 +21,38 @@ import type {
 } from "@ironclad/rivet-core";
 
 // This defines your new type of node.
-export type ExamplePluginNode = ChartNode<
-  "examplePlugin",
-  ExamplePluginNodeData
+export type WinstonPluginNode = ChartNode<
+  "WinstonPlugin",
+  WinstonPluginNodeData
 >;
 
 // This defines the data that your new node will store.
-export type ExamplePluginNodeData = {
-  someData: string;
-
-  // It is a good idea to include useXInput fields for any inputs you have, so that
-  // the user can toggle whether or not to use an import port for them.
-  useSomeDataInput?: boolean;
+export type WinstonPluginNodeData = {
+  logLevel: string;
+  useLogLevelInput?: boolean;
 };
 
 // Make sure you export functions that take in the Rivet library, so that you do not
 // import the entire Rivet core library in your plugin.
-export function examplePluginNode(rivet: typeof Rivet) {
+export function WinstonPluginNode(rivet: typeof Rivet) {
   // This is your main node implementation. It is an object that implements the PluginNodeImpl interface.
-  const ExamplePluginNodeImpl: PluginNodeImpl<ExamplePluginNode> = {
+  const WinstonPluginNodeImpl: PluginNodeImpl<WinstonPluginNode> = {
     // This should create a new instance of your node type from scratch.
-    create(): ExamplePluginNode {
-      const node: ExamplePluginNode = {
+    create(): WinstonPluginNode {
+      const node: WinstonPluginNode = {
         // Use rivet.newId to generate new IDs for your nodes.
         id: rivet.newId<NodeId>(),
 
         // This is the default data that your node will store
         data: {
-          someData: "Hello World",
+          logLevel: "info",
         },
 
         // This is the default title of your node.
-        title: "Example Plugin Node",
+        title: "Winston Plugin Node",
 
         // This must match the type of your node.
-        type: "examplePlugin",
+        type: "WinstonPlugin",
 
         // X and Y should be set to 0. Width should be set to a reasonable number so there is no overflow.
         visualData: {
@@ -70,20 +67,32 @@ export function examplePluginNode(rivet: typeof Rivet) {
     // This function should return all input ports for your node, given its data, connections, all other nodes, and the project. The
     // connection, nodes, and project are for advanced use-cases and can usually be ignored.
     getInputDefinitions(
-      data: ExamplePluginNodeData,
+      data: WinstonPluginNodeData,
       _connections: NodeConnection[],
       _nodes: Record<NodeId, ChartNode>,
       _project: Project
     ): NodeInputDefinition[] {
       const inputs: NodeInputDefinition[] = [];
 
-      if (data.useSomeDataInput) {
+      if (data.useLogLevelInput) {
         inputs.push({
-          id: "someData" as PortId,
+          id: "logLevel" as PortId,
           dataType: "string",
-          title: "Some Data",
+          title: "Log Level",
         });
       }
+
+      inputs.push({
+        id: "logMessage" as PortId,
+        dataType: "string",
+        title: "Log Message",
+      });
+
+      inputs.push({
+        id: "logMetaData" as PortId,
+        dataType: "object",
+        title: "Log Data",
+      });
 
       return inputs;
     },
@@ -91,52 +100,53 @@ export function examplePluginNode(rivet: typeof Rivet) {
     // This function should return all output ports for your node, given its data, connections, all other nodes, and the project. The
     // connection, nodes, and project are for advanced use-cases and can usually be ignored.
     getOutputDefinitions(
-      _data: ExamplePluginNodeData,
+      _data: WinstonPluginNodeData,
       _connections: NodeConnection[],
       _nodes: Record<NodeId, ChartNode>,
       _project: Project
     ): NodeOutputDefinition[] {
-      return [
-        {
-          id: "someData" as PortId,
-          dataType: "string",
-          title: "Some Data",
-        },
-      ];
+      return [];
     },
 
     // This returns UI information for your node, such as how it appears in the context menu.
     getUIData(): NodeUIData {
       return {
-        contextMenuTitle: "Example Plugin",
-        group: "Example",
-        infoBoxBody: "This is an example plugin node.",
-        infoBoxTitle: "Example Plugin Node",
+        contextMenuTitle: "Winston Logger",
+        group: "Logging",
+        infoBoxBody: "This is a plugin node that logs with Winston",
+        infoBoxTitle: "Winston Node",
       };
     },
 
     // This function defines all editors that appear when you edit your node.
     getEditors(
-      _data: ExamplePluginNodeData
-    ): EditorDefinition<ExamplePluginNode>[] {
-      return [
+      _data: WinstonPluginNodeData
+    ): EditorDefinition<WinstonPluginNode>[] {
+      return [ 
         {
-          type: "string",
-          dataKey: "someData",
-          useInputToggleDataKey: "useSomeDataInput",
-          label: "Some Data",
-        },
+          type: "dropdown",
+          dataKey: "logLevel",
+          useInputToggleDataKey: "useLogLevelInput",
+          label: "Log Level",
+          options: [
+            {label: 'Error', value: 'error'}, 
+            {label: 'Warn', value: 'warn'}, 
+            {label: 'Info', value: 'info'}, 
+            {label: 'Verbose', value: 'verbose'}, 
+            {label: 'Debug', value: 'debug'}, 
+            {label: 'Silly', value: 'silly'}
+          ]
+        }
       ];
     },
 
     // This function returns the body of the node when it is rendered on the graph. You should show
     // what the current data of the node is in some way that is useful at a glance.
     getBody(
-      data: ExamplePluginNodeData
+      data: WinstonPluginNodeData
     ): string | NodeBodySpec | NodeBodySpec[] | undefined {
       return rivet.dedent`
-        Example Plugin Node
-        Data: ${data.useSomeDataInput ? "(Using Input)" : data.someData}
+        Log Level: ${data.useLogLevelInput ? "(Using Input)" : data.logLevel}
       `;
     },
 
@@ -144,33 +154,48 @@ export function examplePluginNode(rivet: typeof Rivet) {
     // a valid Outputs object, which is a map of port IDs to DataValue objects. The return value of this function
     // must also correspond to the output definitions you defined in the getOutputDefinitions function.
     async process(
-      data: ExamplePluginNodeData,
+      data: WinstonPluginNodeData,
       inputData: Inputs,
-      _context: InternalProcessContext
+      context: InternalProcessContext
     ): Promise<Outputs> {
-      const someData = rivet.getInputOrData(
-        data,
-        inputData,
-        "someData",
-        "string"
-      );
+
+      const { winston } = await import("../nodeEntry");
+
+      const fileTransport = context.settings.pluginSettings?.winstonRivetPlugin?.fileTransport as string ?? 'winston.log';
+
+      const logLevel = data.logLevel
+      const logMessage = inputData['logMessage' as PortId]?.value as string;
+      const logMetaData = inputData['logMetaData' as PortId]?.value as object;
+
+
+      const logger = winston.createLogger({
+        level: logLevel,
+        exitOnError: false,
+        format: winston.format.json(),
+        transports: [
+          new winston.transports.File({ filename: fileTransport}),
+        ],
+      });
+
+      logger.log({
+        level: logLevel,
+        message: logMessage,
+        meta: logMetaData
+      });
 
       return {
-        ["someData" as PortId]: {
-          type: "string",
-          value: someData,
-        },
+
       };
     },
   };
 
   // Once a node is defined, you must pass it to rivet.pluginNodeDefinition, which will return a valid
   // PluginNodeDefinition object.
-  const examplePluginNode = rivet.pluginNodeDefinition(
-    ExamplePluginNodeImpl,
-    "Example Plugin Node"
+  const WinstonPluginNode = rivet.pluginNodeDefinition(
+    WinstonPluginNodeImpl,
+    "Winston Logger"
   );
 
   // This definition should then be used in the `register` function of your plugin definition.
-  return examplePluginNode;
+  return WinstonPluginNode;
 }
